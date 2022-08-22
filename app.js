@@ -28,3 +28,45 @@
       - Para obter a key e fazer requests, você terá que fazer login e escolher
         o plano free. Seus dados de cartão de crédito não serão solicitados.
 */
+
+const currencyOneEl = document.querySelector('[data-js="currency-one"]')
+const currencyTwoEl = document.querySelector('[data-js="currency-two"]')
+
+const APIKey = '2025d3ee4740af3454af1d0d'
+const getUrl = `https://v6.exchangerate-api.com/v6/${APIKey}/latest/kkk`
+
+const getErrorMessage = errorType => ({
+  'unsupported-code': 'The selected currency does not exist in our database!',
+  'malformed-request': `when some part of your request doesn't follow the structure shown above.`,
+  'invalid-key': 'when your API key is not valid.',
+  'inactive-account': `if your email address wasn't confirmed.`,
+  'quota-reached': 'when your account has reached the the number of requests allowed by your plan.',
+  'plan-upgrade-required': `if your plan level doesn't support this type of request.`
+})[errorType] || 'It was not possible to obtain the information!'
+
+const fetchExchangeRate = async () => {
+  try {
+    const response = await fetch(getUrl)
+
+    if (!response.ok) {
+      
+    }
+
+    const exchangeRateData = await response.json()
+
+    if (exchangeRateData.result === 'error') {
+      throw new Error(getErrorMessage(exchangeRateData['error-type']))
+    }
+  } catch (err) {
+    alert(err.message)
+  }
+}
+
+fetchExchangeRate()
+
+currencyOneEl.innerHTML = `<option>hi</option>`
+currencyTwoEl.innerHTML = `<option>bye</option>`
+
+console.log(currencyOneEl, currencyTwoEl)
+
+// 21:20
