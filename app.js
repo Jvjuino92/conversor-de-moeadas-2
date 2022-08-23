@@ -31,9 +31,11 @@
 
 const currencyOneEl = document.querySelector('[data-js="currency-one"]')
 const currencyTwoEl = document.querySelector('[data-js="currency-two"]')
+const currenciesEl = document.querySelector('[data-js="currencies-container"]')
+const convertedValueEl = document.querySelector('[data-js="converted-value"]')
+const valuePrecisionEl = document.querySelector('[data-js="conversion-precision"]')
 
-const APIKey = '2025d3ee4740af3454af1d0d'
-const getUrl = `https://v6.exchangerate-api.com/v6/${APIKey}/latest/kkk`
+const url = `https://v6.exchangerate-api.com/v6/2025d3ee4740af3454af1d0d/latest/USD`
 
 const getErrorMessage = errorType => ({
   'unsupported-code': 'The selected currency does not exist in our database!',
@@ -46,10 +48,10 @@ const getErrorMessage = errorType => ({
 
 const fetchExchangeRate = async () => {
   try {
-    const response = await fetch(getUrl)
+    const response = await fetch(url)
 
     if (!response.ok) {
-      
+      throw new Error('Your connection timed out!')
     }
 
     const exchangeRateData = await response.json()
@@ -57,16 +59,42 @@ const fetchExchangeRate = async () => {
     if (exchangeRateData.result === 'error') {
       throw new Error(getErrorMessage(exchangeRateData['error-type']))
     }
+
+    return exchangeRateData
   } catch (err) {
-    alert(err.message)
+    const div = document.createElement('div')
+    const button = document.createElement('button')
+
+    div.textContent = err.message
+    div.classList.add('alert', 'alert-warning', 'alert-dismissible', 'fade', 'show')
+    div.setAttribute('role', 'alert')
+    button.classList.add('btn-close')
+    button.setAttribute('type', 'button')
+    button.setAttribute('aria-label', 'Close')
+
+    button.addEventListener('click', () => {
+      div.remove()
+    })
+
+    div.appendChild(button)
+    currenciesEl.insertAdjacentElement('afterend', div)
   }
 }
 
-fetchExchangeRate()
+const init = async () => {
+  const exchangeRateData = await fetchExchangeRate()
 
-currencyOneEl.innerHTML = `<option>hi</option>`
-currencyTwoEl.innerHTML = `<option>bye</option>`
+  const getOptions = selectedCurrency => Object.keys(exchangeRateData.conversion_rates)
+    .map(currency => `<option ${currency === selectedCurrency ? 'selected' : ''}>${currency}</option>`)
+    .join('')
 
-console.log(currencyOneEl, currencyTwoEl)
+  currencyOneEl.innerHTML = getOptions('USD')
+  currencyTwoEl.innerHTML = getOptions('BRL')
 
-// 21:20
+  convertedValueEl.textContent = exchangeRateData.conversion_rates.BRL.toFixed(2)
+  valuePrecisionEl.textContent = `1 USD = ${exchangeRateData.conversion_rates.BRL} BRL`
+}
+
+init()
+
+// 44:00
