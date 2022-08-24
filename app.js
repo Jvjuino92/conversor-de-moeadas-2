@@ -34,8 +34,12 @@ const currencyTwoEl = document.querySelector('[data-js="currency-two"]')
 const currenciesEl = document.querySelector('[data-js="currencies-container"]')
 const convertedValueEl = document.querySelector('[data-js="converted-value"]')
 const valuePrecisionEl = document.querySelector('[data-js="conversion-precision"]')
+const timesCurrencyOneEl = document.querySelector('[data-js="currency-one-times"]')
 
-const url = `https://v6.exchangerate-api.com/v6/2025d3ee4740af3454af1d0d/latest/USD`
+let internalExchangeRate = {}
+
+const urlKey = '2025d3ee4740af3454af1d0d'
+const getUrl = currency => `https://v6.exchangerate-api.com/v6/${urlKey}/latest/${currency}`
 
 const getErrorMessage = errorType => ({
   'unsupported-code': 'The selected currency does not exist in our database!',
@@ -46,7 +50,7 @@ const getErrorMessage = errorType => ({
   'plan-upgrade-required': `if your plan level doesn't support this type of request.`
 })[errorType] || 'It was not possible to obtain the information!'
 
-const fetchExchangeRate = async () => {
+const fetchExchangeRate = async url => {
   try {
     const response = await fetch(url)
 
@@ -82,19 +86,37 @@ const fetchExchangeRate = async () => {
 }
 
 const init = async () => {
-  const exchangeRateData = await fetchExchangeRate()
+  internalExchangeRate = { ...(await fetchExchangeRate(getUrl('USD'))) }
 
-  const getOptions = selectedCurrency => Object.keys(exchangeRateData.conversion_rates)
+  const getOptions = selectedCurrency => Object.keys(internalExchangeRate.conversion_rates)
     .map(currency => `<option ${currency === selectedCurrency ? 'selected' : ''}>${currency}</option>`)
     .join('')
 
   currencyOneEl.innerHTML = getOptions('USD')
   currencyTwoEl.innerHTML = getOptions('BRL')
 
-  convertedValueEl.textContent = exchangeRateData.conversion_rates.BRL.toFixed(2)
-  valuePrecisionEl.textContent = `1 USD = ${exchangeRateData.conversion_rates.BRL} BRL`
+  convertedValueEl.textContent = internalExchangeRate.conversion_rates.BRL.toFixed(2)
+  valuePrecisionEl.textContent = `1 USD = ${internalExchangeRate.conversion_rates.BRL} BRL`
 }
+
+timesCurrencyOneEl.addEventListener('input', e => {
+  convertedValueEl.textContent = e.target.value * internalExchangeRate.conversion_rates[currencyTwoEl.value].toFixed(2)
+})
+
+currencyTwoEl.addEventListener('input', e => {
+  const currencyTwoValue = internalExchangeRate.conversion_rates[e.target.value]
+
+  convertedValueEl.textContent = (timesCurrencyOneEl.value * currencyTwoValue).toFixed(2)
+  valuePrecisionEl.textContent = `1 ${currencyOneEl.value} = ${1 * internalExchangeRate.conversion_rates[e.target.value]} ${currencyTwoEl.value}`
+})
+
+currencyOneEl.addEventListener('input', async e => {
+  internalExchangeRate = { ...(await fetchExchangeRate(getUrl(e.target.value))) }
+
+  convertedValueEl.textContent = timesCurrencyOneEl.value * internalExchangeRate.conversion_rates[currencyTwoEl.value].toFixed(2)
+  valuePrecisionEl.textContent = `1 ${currencyOneEl.value} = ${1 * internalExchangeRate.conversion_rates[currencyTwoEl.value]} ${currencyTwoEl.value}`
+})
 
 init()
 
-// 44:00
+// 1:10:00
