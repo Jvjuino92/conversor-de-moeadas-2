@@ -36,35 +36,6 @@ const convertedValueEl = document.querySelector('[data-js="converted-value"]')
 const valuePrecisionEl = document.querySelector('[data-js="conversion-precision"]')
 const timesCurrencyOneEl = document.querySelector('[data-js="currency-one-times"]')
 
-
-const state = (() => {
-  let exchangeRate = {}
-
-  return {
-    getExchangeRate: () => exchangeRate,
-    setExchangeRate: () => newExchangeRate => {
-      if (!newExchangeRate.conversion_rates) {
-        console.log('The object needs a property conversion_rates');
-        return
-      }
-      exchangeRate = newExchangeRate
-      return exchangeRate
-    }
-  }
-})()
-
-const urlKey = '2025d3ee4740af3454af1d0d'
-const getUrl = currency => `https://v6.exchangerate-api.com/v6/${urlKey}/latest/${currency}`
-
-const getErrorMessage = errorType => ({
-  'unsupported-code': 'The selected currency does not exist in our database!',
-  'malformed-request': `when some part of your request doesn't follow the structure shown above.`,
-  'invalid-key': 'when your API key is not valid.',
-  'inactive-account': `if your email address wasn't confirmed.`,
-  'quota-reached': 'when your account has reached the the number of requests allowed by your plan.',
-  'plan-upgrade-required': `if your plan level doesn't support this type of request.`
-})[errorType] || 'It was not possible to obtain the information!'
-
 const showAlert = err => {
   const div = document.createElement('div')
   const button = document.createElement('button')
@@ -83,6 +54,33 @@ const showAlert = err => {
   div.appendChild(button)
   currenciesEl.insertAdjacentElement('afterend', div)
 }
+
+const state = (() => {
+  let exchangeRate = {}
+
+  return {
+    getExchangeRate: () => exchangeRate,
+    setExchangeRate: () => newExchangeRate => {
+      if (!newExchangeRate.conversion_rates) {
+        showAlert({ message: 'The object needs a property conversion_rates' });
+        return
+      }
+      exchangeRate = newExchangeRate
+      return exchangeRate
+    }
+  }
+})()
+
+const getUrl = currency => `https://v6.exchangerate-api.com/v6/2025d3ee4740af3454af1d0d/latest/${currency}`
+
+const getErrorMessage = errorType => ({
+  'unsupported-code': 'The selected currency does not exist in our database!',
+  'malformed-request': `when some part of your request doesn't follow the structure shown above.`,
+  'invalid-key': 'when your API key is not valid.',
+  'inactive-account': `if your email address wasn't confirmed.`,
+  'quota-reached': 'when your account has reached the the number of requests allowed by your plan.',
+  'plan-upgrade-required': `if your plan level doesn't support this type of request.`
+})[errorType] || 'It was not possible to obtain the information!'
 
 const fetchExchangeRate = async url => {
   try {
@@ -119,7 +117,7 @@ const showInitialInfo = exchangeRate => {
 const init = async () => {
   const exchangeRate = state.setExchangeRate(await fetchExchangeRate(getUrl('USD')))
 
-  if (exchangeRate.conversion_rates) {
+  if (exchangeRate && exchangeRate.conversion_rates) {
     showInitialInfo(exchangeRate)
   }
 }
@@ -142,4 +140,4 @@ currencyTwoEl.addEventListener('input', showUpdatedRates)
 
 init()
 
-// 1:42:00
+// 1:45:05
