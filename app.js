@@ -47,9 +47,8 @@ const showAlert = err => {
   button.setAttribute('type', 'button')
   button.setAttribute('aria-label', 'Close')
 
-  button.addEventListener('click', () => {
-    div.remove()
-  })
+  const removeAlert = () => div.remove()
+  button.addEventListener('click', removeAlert)
 
   div.appendChild(button)
   currenciesEl.insertAdjacentElement('afterend', div)
@@ -71,15 +70,18 @@ const state = (() => {
   }
 })()
 
-const getUrl = currency => `https://v6.exchangerate-api.com/v6/2025d3ee4740af3454af1d0d/latest/${currency}`
+const APIKey = '2025d3ee4740af3454af1d0d'
+const getUrl = currency => 
+  `https://v6.exchangerate-api.com/v6/${APIKey}/latest/${currency}`
 
 const getErrorMessage = errorType => ({
   'unsupported-code': 'The selected currency does not exist in our database!',
-  'malformed-request': `when some part of your request doesn't follow the structure shown above.`,
-  'invalid-key': 'when your API key is not valid.',
-  'inactive-account': `if your email address wasn't confirmed.`,
-  'quota-reached': 'when your account has reached the the number of requests allowed by your plan.',
-  'plan-upgrade-required': `if your plan level doesn't support this type of request.`
+  'base-code-only-on-pro': `Currency info that aren't USD or EUR can only be accessed from`,
+  'malformed-request': `When some part of your request doesn't follow the structure shown above.`,
+  'invalid-key': 'When your API key is not valid.',
+  'inactive-account': `If your email address wasn't confirmed.`,
+  'quota-reached': 'When your account has reached the the number of requests allowed by your plan.',
+  'plan-upgrade-required': `If your plan level doesn't support this type of request.`
 })[errorType] || 'It was not possible to obtain the information!'
 
 const fetchExchangeRate = async url => {
@@ -93,50 +95,78 @@ const fetchExchangeRate = async url => {
     const exchangeRateData = await response.json()
 
     if (exchangeRateData.result === 'error') {
-      throw new Error(getErrorMessage(exchangeRateData['error-type']))
+      const errorMessage = getErrorMessage(exchangeRateData['error-type'])
+      throw new Error(errorMessage)
     }
 
-    return exchangeRateData
+    return state.setExchangeRate(exchangeRateData)
     } catch (err) {
       showAlert(err)
   }
 }
 
-const showInitialInfo = exchangeRate => {
-  const getOptions = selectedCurrency => Object.keys(exchangeRate.conversion_rates)
-  .map(currency => `<option ${currency === selectedCurrency ? 'selected' : ''}>${currency}</option>`)
-  .join('')
+const getOptions = (selectedCurrency, conversion_rates) => {
+  const setSelectedAttribute = currency => 
+    currency === selectedCurrency ? 'selected' : ''
+  const getOptionsAsArray = currency => 
+    `<option ${setSelectedAttribute(currency)}>${currency}</option>`
 
-  currencyOneEl.innerHTML = getOptions('USD')
-  currencyTwoEl.innerHTML = getOptions('BRL')
+  return Object.keys(conversion_rates)
+    .map(getOptionsAsArray)
+    .join('')
+}
 
-  convertedValueEl.textContent = exchangeRate.conversion_rates.BRL.toFixed(2)
-  valuePrecisionEl.textContent = `1 USD = ${exchangeRate.conversion_rates.BRL} BRL`
+const getMultipliedExchangeRate = conversion_rates => {
+  const currencyTwo = conversion_rates[currencyTwoEl.value]
+  return (timesCurrencyOneEl.value * currencyTwo).toFixed(2)
+}
+
+const getNotRoundedExchangeRate = conversion_rates => {
+  const currencyTwo = conversion_rates[currencyTwoEl.value]
+  return `1 ${currencyOneEl.value} = ${1 * currencyTwo} ${currencyTwoEl.value}`
+}
+
+const showUpdatedRates = ({ conversion_rates }) => {
+  convertedValueEl.textContent = getMultipliedExchangeRate(conversion_rates)
+  valuePrecisionEl.textContent = getNotRoundedExchangeRate(conversion_rates)
+}
+
+const showInitialInfo = ({ conversion_rates }) => {
+  currencyOneEl.innerHTML = getOptions('USD', conversion_rates)
+  currencyTwoEl.innerHTML = getOptions('BRL', conversion_rates)
+
+  showUpdatedRates({conversion_rates})
 }
 
 const init = async () => {
-  const exchangeRate = state.setExchangeRate(await fetchExchangeRate(getUrl('USD')))
+  const url = getUrl('USD')
+  const exchangeRate = await fetchExchangeRate(url)
 
   if (exchangeRate && exchangeRate.conversion_rates) {
     showInitialInfo(exchangeRate)
   }
 }
 
-const showUpdatedRates = () => {
-  convertedValueEl.textContent = (timesCurrencyOneEl.value * internalExchangeRate.conversion_rates[currencyTwoEl.value]).toFixed(2)
-  valuePrecisionEl.textContent = `1 ${currencyOneEl.value} = ${1 * internalExchangeRate.conversion_rates[currencyTwoEl.value]} ${currencyTwoEl.value}`
+const handleTimesCurrencyOneElInput = () => {
+  const { conversion_rates } = state.getExchangeRate()
+  convertedValueEl.textContent = getMultipliedExchangeRate(conversion_rates)
 }
 
-timesCurrencyOneEl.addEventListener('input', e => {
-  convertedValueEl.textContent = e.target.value * internalExchangeRate.conversion_rates[currencyTwoEl.value].toFixed(2)
-})
+const handleCurrencyTwoElInput = () => {
+  const exchangeRate = state.getExchangeRate()
+  showUpdatedRates(exchangeRate)
+}
 
-currencyTwoEl.addEventListener('input', showUpdatedRates)
+const handleCurrencyOneElInput = async e => {
+  const url = getUrl(e.target.value)
+  const exchangeRate = await fetchExchangeRate(url)
 
-  currencyOneEl.addEventListener('input', async e => {
-  internalExchangeRate = { ...(await fetchExchangeRate(getUrl(e.target.value))) }
-  showUpdatedRates()
-})
+  showUpdatedRates(exchangeRate)
+}
+
+timesCurrencyOneEl.addEventListener('input', handleTimesCurrencyOneElInput)
+currencyTwoEl.addEventListener('input', handleCurrencyTwoElInput)
+currencyOneEl.addEventListener('input', handleCurrencyOneElInput)
 
 init()
 
